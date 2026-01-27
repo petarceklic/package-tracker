@@ -5,20 +5,21 @@ let currentView = 'calendar';
 
 const API_BASE = window.location.origin;
 
-// Carrier colors for calendar events
+// Carrier colors for calendar events - Pink themed!
 const CARRIER_COLORS = {
-  'Australia Post': '#DC2626',
-  'StarTrack': '#2563EB',
-  'Toll': '#059669',
-  'Aramex': '#7C3AED',
-  'CouriersPlease': '#DB2777',
-  'DHL Express': '#FBBF24',
-  'FedEx': '#8B5CF6',
-  'TNT': '#F97316',
-  'Sendle': '#06B6D4',
-  'Amazon': '#FF9900',
-  'AliExpress': '#E62E04',
-  'eBay': '#E53238'
+  'Australia Post': '#ec4899',
+  'StarTrack': '#f472b6',
+  'Toll': '#be185d',
+  'Aramex': '#db2777',
+  'CouriersPlease': '#fb7185',
+  'DHL Express': '#f9a8d4',
+  'FedEx': '#fda4af',
+  'TNT': '#fb923c',
+  'Sendle': '#fbbf24',
+  'Amazon': '#ec4899',
+  'AliExpress': '#db2777',
+  'eBay': '#be185d',
+  'Shippit': '#f472b6'
 };
 
 // Initialize
@@ -36,7 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   hideLoading();
   
   // Set account info
-  document.getElementById('account-info').textContent = 'petarceklic@gmail.com';
+  document.getElementById('account-info').textContent = '✨ Tracking your deliveries with love';
   
   // Auto-refresh every 30 minutes
   setInterval(loadPackages, 30 * 60 * 1000);
@@ -153,29 +154,29 @@ function updateListView() {
   emptyState.classList.add('hidden');
   
   listContainer.innerHTML = filteredPackages.map(pkg => `
-    <div class="bg-white rounded-lg shadow-sm p-5 hover:shadow-md transition cursor-pointer" onclick='showPackageDetails(${JSON.stringify(pkg)})'>
+    <div class="card p-6 hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1" onclick='showPackageDetails(${JSON.stringify(pkg)})'>
       <div class="flex justify-between items-start mb-3">
         <div class="flex-1">
-          <div class="flex items-center gap-2 mb-2">
+          <div class="flex items-center gap-2 mb-3">
             <span class="carrier-badge">${pkg.carrier}</span>
             <span class="status-badge status-${pkg.status.toLowerCase().replace(/\s+/g, '-')}">${pkg.status}</span>
           </div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-1">
+          <h3 class="text-lg font-bold text-pink-900 mb-2">
             ${pkg.item_description || 'Package'}
           </h3>
-          <p class="text-sm text-gray-500">${pkg.email_subject}</p>
+          <p class="text-sm text-pink-400">${pkg.email_subject}</p>
         </div>
         ${pkg.estimated_delivery ? `
-          <div class="text-right">
-            <div class="text-sm text-gray-500">Expected</div>
-            <div class="text-lg font-semibold text-gray-900">${formatDate(pkg.estimated_delivery)}</div>
+          <div class="text-right bg-gradient-to-br from-pink-50 to-rose-50 px-4 py-3 rounded-2xl">
+            <div class="text-xs text-pink-400 font-medium">Expected</div>
+            <div class="text-lg font-bold bg-gradient-to-r from-pink-600 to-rose-500 bg-clip-text text-transparent">${formatDate(pkg.estimated_delivery)}</div>
           </div>
         ` : ''}
       </div>
-      <div class="flex items-center justify-between pt-3 border-t">
-        <code class="text-sm bg-gray-100 px-2 py-1 rounded">${pkg.tracking_number}</code>
-        <a href="${pkg.tracking_url}" target="_blank" onclick="event.stopPropagation()" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-          Track →
+      <div class="flex items-center justify-between pt-4 border-t-2 border-pink-100">
+        <code class="text-sm bg-pink-50 text-pink-700 px-3 py-1.5 rounded-full font-mono">${pkg.tracking_number}</code>
+        <a href="${pkg.tracking_url}" target="_blank" onclick="event.stopPropagation()" class="bg-gradient-to-r from-pink-500 to-rose-500 text-white px-4 py-2 rounded-full text-sm font-medium hover:from-pink-600 hover:to-rose-600 transition">
+          Track Package →
         </a>
       </div>
     </div>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Package Tracker 📦</title>
+    <title>Ellen's Package Tracker 💕</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -14,52 +14,84 @@
     
     <!-- Custom styles -->
     <style>
+        body {
+            background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 50%, #f9a8d4 100%);
+            min-height: 100vh;
+        }
+        
         .fc-event {
             cursor: pointer;
-            border-radius: 4px;
-            padding: 2px 4px;
+            border-radius: 12px;
+            padding: 4px 8px;
+            font-weight: 500;
         }
         .fc-daygrid-event {
             white-space: normal;
         }
+        
+        .fc .fc-button-primary {
+            background-color: #ec4899 !important;
+            border-color: #ec4899 !important;
+        }
+        
+        .fc .fc-button-primary:hover {
+            background-color: #db2777 !important;
+            border-color: #db2777 !important;
+        }
+        
+        .fc .fc-button-active {
+            background-color: #be185d !important;
+            border-color: #be185d !important;
+        }
+        
         .status-badge {
             display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
+            padding: 4px 12px;
+            border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
         }
-        .status-in-transit { background: #3b82f6; color: white; }
-        .status-out-for-delivery { background: #f59e0b; color: white; }
-        .status-delivered { background: #10b981; color: white; }
-        .status-delayed { background: #ef4444; color: white; }
-        .status-cancelled { background: #6b7280; color: white; }
+        .status-in-transit { background: linear-gradient(135deg, #ec4899, #f472b6); color: white; }
+        .status-out-for-delivery { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: white; }
+        .status-delivered { background: linear-gradient(135deg, #10b981, #34d399); color: white; }
+        .status-delayed { background: linear-gradient(135deg, #ef4444, #f87171); color: white; }
+        .status-cancelled { background: linear-gradient(135deg, #9ca3af, #d1d5db); color: white; }
         
         .carrier-badge {
             display: inline-block;
-            padding: 2px 6px;
-            border-radius: 4px;
+            padding: 3px 10px;
+            border-radius: 12px;
             font-size: 11px;
-            background: #e5e7eb;
-            color: #374151;
+            background: #fdf2f8;
+            color: #be185d;
+            border: 1px solid #fbcfe8;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            box-shadow: 0 8px 32px rgba(236, 72, 153, 0.15);
         }
     </style>
 </head>
-<body class="bg-gray-50">
-    <div class="min-h-screen">
+<body>
+    <div class="min-h-screen py-6">
         <!-- Header -->
-        <header class="bg-white shadow-sm border-b">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <header class="card mx-auto max-w-7xl mb-6">
+            <div class="px-6 py-6">
                 <div class="flex justify-between items-center">
                     <div>
-                        <h1 class="text-2xl font-bold text-gray-900">📦 Package Tracker</h1>
-                        <p class="text-sm text-gray-500" id="account-info">Loading...</p>
+                        <h1 class="text-3xl font-bold bg-gradient-to-r from-pink-600 to-rose-500 bg-clip-text text-transparent">
+                            💕 Ellen's Package Tracker
+                        </h1>
+                        <p class="text-sm text-pink-400 mt-1" id="account-info">Loading...</p>
                     </div>
                     <div class="flex gap-3">
-                        <button onclick="scanNow()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition">
+                        <button onclick="scanNow()" class="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white px-5 py-2.5 rounded-full font-medium transition shadow-lg shadow-pink-500/50">
                             🔄 Scan Inbox
                         </button>
-                        <button onclick="toggleView()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium transition">
+                        <button onclick="toggleView()" class="bg-pink-100 hover:bg-pink-200 text-pink-700 px-5 py-2.5 rounded-full font-medium transition">
                             <span id="view-toggle-text">📋 List View</span>
                         </button>
                     </div>
@@ -68,46 +100,45 @@
         </header>
 
         <!-- Stats Bar -->
-        <div class="bg-white border-b">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                <div class="grid grid-cols-3 gap-4" id="stats">
+        <div class="card mx-auto max-w-7xl mb-6">
+            <div class="px-6 py-5">
+                <div class="grid grid-cols-3 gap-6" id="stats">
                     <div class="text-center">
-                        <div class="text-2xl font-bold text-gray-900" id="stat-total">0</div>
-                        <div class="text-sm text-gray-500">Total Packages</div>
+                        <div class="text-3xl font-bold text-pink-600" id="stat-total">0</div>
+                        <div class="text-sm text-pink-400 font-medium">Total Packages</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-2xl font-bold text-blue-600" id="stat-active">0</div>
-                        <div class="text-sm text-gray-500">In Transit</div>
+                        <div class="text-3xl font-bold text-rose-500" id="stat-active">0</div>
+                        <div class="text-sm text-pink-400 font-medium">In Transit</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-2xl font-bold text-green-600" id="stat-delivered">0</div>
-                        <div class="text-sm text-gray-500">Delivered</div>
+                        <div class="text-3xl font-bold text-emerald-500" id="stat-delivered">0</div>
+                        <div class="text-sm text-pink-400 font-medium">Delivered</div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Search & Filters -->
-        <div class="bg-white border-b">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <div class="card mx-auto max-w-7xl mb-6">
+            <div class="px-6 py-4">
                 <div class="flex gap-3">
                     <input 
                         type="text" 
                         id="search-input" 
                         placeholder="Search tracking numbers, items..." 
-                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         onkeyup="handleSearch()"
                     />
                     <select 
                         id="carrier-filter" 
-                        class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        class="px-4 py-2.5 border-2 border-pink-200 rounded-full focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-200 transition bg-white"
                         onchange="handleFilter()"
                     >
                         <option value="">All Carriers</option>
                     </select>
                     <select 
                         id="status-filter" 
-                        class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        class="px-4 py-2.5 border-2 border-pink-200 rounded-full focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-200 transition bg-white"
                         onchange="handleFilter()"
                     >
                         <option value="">All Status</option>
@@ -122,31 +153,31 @@
         </div>
 
         <!-- Main Content -->
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <!-- Calendar View -->
-            <div id="calendar-view" class="bg-white rounded-lg shadow-sm p-6">
+            <div id="calendar-view" class="card p-8">
                 <div id="calendar"></div>
             </div>
 
             <!-- List View -->
             <div id="list-view" class="hidden">
-                <div id="packages-list" class="space-y-3">
+                <div id="packages-list" class="space-y-4">
                     <!-- Packages will be inserted here -->
                 </div>
-                <div id="empty-state" class="hidden text-center py-12">
-                    <div class="text-6xl mb-4">📭</div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-2">No packages found</h3>
-                    <p class="text-gray-500">Try scanning your inbox or adjusting your filters</p>
+                <div id="empty-state" class="hidden text-center py-16 card">
+                    <div class="text-7xl mb-4">💕</div>
+                    <h3 class="text-2xl font-bold bg-gradient-to-r from-pink-600 to-rose-500 bg-clip-text text-transparent mb-2">No packages found</h3>
+                    <p class="text-pink-400">Try scanning your inbox or adjusting your filters</p>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Loading Overlay -->
-    <div id="loading" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 text-center">
-            <div class="text-4xl mb-3">📦</div>
-            <div class="text-lg font-semibold">Loading packages...</div>
+    <div id="loading" class="hidden fixed inset-0 bg-gradient-to-br from-pink-500/20 to-rose-500/20 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="card p-8 text-center">
+            <div class="animate-spin rounded-full h-14 w-14 border-b-4 border-pink-500 mx-auto mb-4"></div>
+            <div class="text-xl font-bold bg-gradient-to-r from-pink-600 to-rose-500 bg-clip-text text-transparent">Loading Ellen's packages... 💕</div>
         </div>
     </div>
 

@@ -24,10 +24,15 @@ const CARRIER_COLORS = {
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
   showLoading();
+  
+  // Initialize calendar FIRST (before loading data)
+  initCalendar();
+  
+  // Then load data (which will update the calendar)
   await loadStats();
   await loadCarriers();
   await loadPackages();
-  initCalendar();
+  
   hideLoading();
   
   // Set account info

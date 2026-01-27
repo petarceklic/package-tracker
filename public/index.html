@@ -66,12 +66,36 @@
             color: #be185d;
             border: 1px solid #fbcfe8;
         }
-        
+
+        .email-account-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            background: linear-gradient(135deg, #dbeafe, #e0e7ff);
+            color: #3730a3;
+            border: 1px solid #c7d2fe;
+            font-weight: 500;
+        }
+
         .card {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             border-radius: 24px;
             box-shadow: 0 8px 32px rgba(236, 72, 153, 0.15);
+        }
+
+        .card-delivered {
+            background: rgba(249, 250, 251, 0.95);
+            opacity: 0.85;
+        }
+
+        .card-delivered:hover {
+            opacity: 1;
+        }
+
+        .delivered-event {
+            opacity: 0.7;
         }
     </style>
 </head>

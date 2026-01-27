@@ -7,15 +7,38 @@ const supabase = createClient(
   process.env.SUPABASE_KEY
 );
 
+// Check if columns exist (cached)
+let columnsChecked = false;
+let hasNewColumns = false;
+
+async function checkNewColumns() {
+  if (columnsChecked) return hasNewColumns;
+  try {
+    const { data, error } = await supabase.from('packages').select('delivered_at, email_account').limit(1);
+    hasNewColumns = !error;
+    columnsChecked = true;
+    if (!hasNewColumns) {
+      console.log('Note: New columns (delivered_at, email_account) not yet added to Supabase.');
+      console.log('Run this SQL in Supabase dashboard:');
+      console.log('ALTER TABLE packages ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ;');
+      console.log('ALTER TABLE packages ADD COLUMN IF NOT EXISTS email_account TEXT;');
+    }
+  } catch (e) {
+    hasNewColumns = false;
+    columnsChecked = true;
+  }
+  return hasNewColumns;
+}
+
 const queries = {
-  insertPackage: async (trackingNumber, carrier, status, estimatedDelivery, itemDescription, emailSubject, emailDate, trackingUrl) => {
+  insertPackage: async (trackingNumber, carrier, status, estimatedDelivery, itemDescription, emailSubject, emailDate, trackingUrl, emailAccount = null, deliveredAt = null) => {
     // Check if package already exists
     const { data: existing } = await supabase
       .from('packages')
       .select('*')
       .eq('tracking_number', trackingNumber)
       .single();
-    
+
     const packageData = {
       tracking_number: trackingNumber,
       carrier,
@@ -27,8 +50,28 @@ const queries = {
       tracking_url: trackingUrl,
       updated_at: new Date().toISOString()
     };
-    
+
+    // Only add new columns if they exist in the database
+    const canUseNewColumns = await checkNewColumns();
+    if (canUseNewColumns) {
+      if (emailAccount) {
+        packageData.email_account = emailAccount;
+      }
+      if (status === 'Delivered' && deliveredAt) {
+        packageData.delivered_at = deliveredAt;
+      }
+    }
+
     if (existing) {
+      // Don't overwrite email_account if already set
+      if (canUseNewColumns && existing.email_account && !emailAccount) {
+        delete packageData.email_account;
+      }
+      // Don't overwrite delivered_at if already set
+      if (canUseNewColumns && existing.delivered_at) {
+        delete packageData.delivered_at;
+      }
+
       // Update existing package
       const { data, error } = await supabase
         .from('packages')
@@ -36,7 +79,7 @@ const queries = {
         .eq('tracking_number', trackingNumber)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     } else {
@@ -46,7 +89,7 @@ const queries = {
         .insert([packageData])
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     }
@@ -85,13 +128,21 @@ const queries = {
   },
   
   updatePackageStatus: async (status, trackingNumber) => {
+    const updateData = { status, updated_at: new Date().toISOString() };
+
+    // Set delivered_at timestamp when marking as delivered (if column exists)
+    const canUseNewColumns = await checkNewColumns();
+    if (status === 'Delivered' && canUseNewColumns) {
+      updateData.delivered_at = new Date().toISOString();
+    }
+
     const { data, error } = await supabase
       .from('packages')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update(updateData)
       .eq('tracking_number', trackingNumber)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
   },

@@ -5,13 +5,19 @@ CREATE TABLE IF NOT EXISTS packages (
   carrier TEXT NOT NULL,
   status TEXT DEFAULT 'In Transit',
   estimated_delivery DATE,
+  delivered_at TIMESTAMPTZ,
   item_description TEXT,
   email_subject TEXT,
   email_date TEXT,
+  email_account TEXT,
   tracking_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add new columns to existing table (run these if table already exists)
+ALTER TABLE packages ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ;
+ALTER TABLE packages ADD COLUMN IF NOT EXISTS email_account TEXT;
 
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_packages_tracking_number ON packages(tracking_number);

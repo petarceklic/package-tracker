@@ -2,6 +2,27 @@ const { execSync } = require('child_process');
 const { queries } = require('./db-supabase');
 require('dotenv').config();
 
+// Gmail accounts to scan
+const GMAIL_ACCOUNTS = [
+  process.env.GOG_ACCOUNT || 'petarceklic@gmail.com',
+  'eceklic@gmail.com'
+];
+
+// Keywords that indicate a package was delivered
+const DELIVERY_KEYWORDS = [
+  'delivered',
+  'has been delivered',
+  'was delivered',
+  'successfully delivered',
+  'package delivered',
+  'your package has arrived',
+  'delivery complete',
+  'left at',
+  'signed for',
+  'delivered to',
+  'parcel delivered'
+];
+
 // Same CARRIERS config as before
 const CARRIERS = {
   'Australia Post': {
@@ -131,32 +152,50 @@ function parseDate(dateStr) {
   }
 }
 
+function checkIfDelivered(emailBody, emailSubject) {
+  const combinedText = (emailSubject + ' ' + emailBody).toLowerCase();
+  for (const keyword of DELIVERY_KEYWORDS) {
+    if (combinedText.includes(keyword.toLowerCase())) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isDeliveryDatePassed(estimatedDelivery) {
+  if (!estimatedDelivery) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const deliveryDate = new Date(estimatedDelivery);
+  return deliveryDate < today;
+}
+
 function extractTrackingInfo(emailBody, emailSubject, fromEmail) {
   let detectedCarrier = null;
   let trackingNumber = null;
   let estimatedDelivery = null;
-  
+
   for (const [carrier, config] of Object.entries(CARRIERS)) {
-    const isFromCarrier = config.domains.some(domain => 
+    const isFromCarrier = config.domains.some(domain =>
       fromEmail.toLowerCase().includes(domain)
     );
-    
+
     if (isFromCarrier || emailSubject.toLowerCase().includes(carrier.toLowerCase())) {
       detectedCarrier = carrier;
       const combinedText = emailSubject + '\n' + emailBody;
-      
+
       for (const pattern of config.patterns) {
         const match = combinedText.match(pattern);
         if (match) {
           trackingNumber = match[1] || match[0];
           // Validate tracking number isn't a common false positive
-          if (trackingNumber.length >= 8 && 
+          if (trackingNumber.length >= 8 &&
               !['tracking', 'shipment', 'delivery', 'notification'].includes(trackingNumber.toLowerCase())) {
             break;
           }
         }
       }
-      
+
       for (const datePattern of DATE_PATTERNS) {
         const match = combinedText.match(datePattern);
         if (match) {
@@ -164,66 +203,71 @@ function extractTrackingInfo(emailBody, emailSubject, fromEmail) {
           break;
         }
       }
-      
+
       if (trackingNumber) break;
     }
   }
-  
+
+  // Check if the email indicates delivery
+  const isDelivered = checkIfDelivered(emailBody, emailSubject);
+
   return {
     carrier: detectedCarrier,
     trackingNumber,
     estimatedDelivery,
-    trackingUrl: detectedCarrier ? CARRIERS[detectedCarrier].trackingUrl + trackingNumber : null
+    trackingUrl: detectedCarrier ? CARRIERS[detectedCarrier].trackingUrl + trackingNumber : null,
+    isDelivered
   };
 }
 
-async function scanGmailFast() {
-  console.log('📧 Fast scanning Gmail for shipping notifications...');
-  
+async function scanGmailAccount(account) {
+  console.log(`\n📧 Scanning ${account}...`);
+
   const daysBack = process.env.SCAN_DAYS_BACK || 90;
-  const searchQuery = `newer_than:${daysBack}d (tracking OR delivery OR shipped OR shipment)`;
-  
+  const searchQuery = `newer_than:${daysBack}d (tracking OR delivery OR shipped OR shipment OR delivered)`;
+
   let result;
   try {
     result = execSync(
-      `gog gmail search '${searchQuery}' --max 50 --json`,
+      `gog gmail search '${searchQuery}' --max 50 --json --account ${account}`,
       { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
     );
   } catch (error) {
-    console.error('❌ Error scanning Gmail:', error.message);
-    return { scanned: 0, found: 0 };
+    console.error(`❌ Error scanning ${account}:`, error.message);
+    return { scanned: 0, found: 0, delivered: 0 };
   }
-  
+
   const data = JSON.parse(result);
   const threads = data.threads || [];
-  
-  console.log(`📬 Found ${threads.length} potential shipping emails`);
-  
+
+  console.log(`📬 Found ${threads.length} potential shipping emails in ${account}`);
+
   let packagesFound = 0;
+  let deliveredCount = 0;
   let processed = 0;
-  
+
   for (const thread of threads) {
     processed++;
     console.log(`Processing ${processed}/${threads.length}...`);
-    
+
     try {
       // Use thread data directly (faster than fetching full body)
       const subject = thread.subject || '';
       const from = thread.from || '';
       const date = thread.date || '';
-      
+
       // Only fetch body for promising threads
       let body = '';
       for (const [carrier, config] of Object.entries(CARRIERS)) {
-        const isFromCarrier = config.domains.some(domain => 
+        const isFromCarrier = config.domains.some(domain =>
           from.toLowerCase().includes(domain)
         );
-        
+
         if (isFromCarrier || subject.toLowerCase().includes(carrier.toLowerCase())) {
           // This looks promising, fetch full body
           try {
             body = execSync(
-              `gog gmail get ${thread.id} --format full`,
+              `gog gmail get ${thread.id} --format full --account ${account}`,
               { encoding: 'utf-8', maxBuffer: 5 * 1024 * 1024, timeout: 10000 }
             );
           } catch (e) {
@@ -232,37 +276,54 @@ async function scanGmailFast() {
           break;
         }
       }
-      
+
       const info = extractTrackingInfo(body || thread.snippet || '', subject, from);
-      
+
       if (info.carrier && info.trackingNumber) {
         let itemDesc = subject
-          .replace(/tracking|shipment|delivery|notification|confirmation/gi, '')
+          .replace(/tracking|shipment|delivery|notification|confirmation|delivered/gi, '')
           .replace(/[^\w\s-]/g, '')
           .trim();
-        
+
         if (itemDesc.length > 100) {
           itemDesc = itemDesc.substring(0, 100) + '...';
         }
-        
+
         if (!itemDesc) {
           itemDesc = `Package from ${info.carrier}`;
         }
-        
+
+        // Determine status
+        let status = 'In Transit';
+        let deliveredAt = null;
+
+        if (info.isDelivered) {
+          status = 'Delivered';
+          deliveredAt = new Date().toISOString();
+          deliveredCount++;
+        } else if (isDeliveryDatePassed(info.estimatedDelivery)) {
+          // If delivery date is in the past, likely delivered
+          status = 'Delivered';
+          deliveredAt = new Date(info.estimatedDelivery).toISOString();
+          deliveredCount++;
+        }
+
         try {
           await queries.insertPackage(
             info.trackingNumber,
             info.carrier,
-            'In Transit',
+            status,
             info.estimatedDelivery,
             itemDesc,
             subject,
             date,
-            info.trackingUrl
+            info.trackingUrl,
+            account,
+            deliveredAt
           );
-          
+
           packagesFound++;
-          console.log(`✅ ${info.carrier}: ${info.trackingNumber} ${info.estimatedDelivery ? `(${info.estimatedDelivery})` : ''}`);
+          console.log(`✅ ${info.carrier}: ${info.trackingNumber} [${status}] ${info.estimatedDelivery ? `(${info.estimatedDelivery})` : ''} from ${account}`);
         } catch (dbError) {
           console.error('DB error:', dbError.message);
         }
@@ -271,9 +332,68 @@ async function scanGmailFast() {
       continue;
     }
   }
-  
-  console.log(`\n🎉 Scan complete! Found ${packagesFound} packages from ${threads.length} emails`);
-  return { scanned: threads.length, found: packagesFound };
+
+  console.log(`\n📊 ${account}: Found ${packagesFound} packages (${deliveredCount} delivered)`);
+  return { scanned: threads.length, found: packagesFound, delivered: deliveredCount };
+}
+
+async function updateDeliveryStatuses() {
+  console.log('\n🔄 Checking for packages to mark as delivered...');
+
+  try {
+    const packages = await queries.getAllPackages();
+    let updatedCount = 0;
+
+    for (const pkg of packages) {
+      if (pkg.status === 'Delivered' || pkg.status === 'Cancelled') {
+        continue;
+      }
+
+      // Check if delivery date has passed
+      if (isDeliveryDatePassed(pkg.estimated_delivery)) {
+        await queries.updatePackageStatus('Delivered', pkg.tracking_number);
+        console.log(`📦 Auto-marked as delivered: ${pkg.tracking_number} (past delivery date)`);
+        updatedCount++;
+      }
+    }
+
+    console.log(`✅ Updated ${updatedCount} packages to delivered status`);
+    return updatedCount;
+  } catch (error) {
+    console.error('Error updating delivery statuses:', error);
+    return 0;
+  }
+}
+
+async function scanGmailFast() {
+  console.log('📧 Starting multi-account Gmail scan...');
+  console.log(`📋 Accounts to scan: ${GMAIL_ACCOUNTS.join(', ')}`);
+
+  let totalScanned = 0;
+  let totalFound = 0;
+  let totalDelivered = 0;
+
+  for (const account of GMAIL_ACCOUNTS) {
+    const result = await scanGmailAccount(account);
+    totalScanned += result.scanned;
+    totalFound += result.found;
+    totalDelivered += result.delivered;
+  }
+
+  // Also check and update existing packages based on delivery dates
+  const autoDelivered = await updateDeliveryStatuses();
+
+  console.log(`\n🎉 Scan complete!`);
+  console.log(`📬 Scanned: ${totalScanned} emails from ${GMAIL_ACCOUNTS.length} accounts`);
+  console.log(`📦 Found: ${totalFound} packages`);
+  console.log(`✅ Delivered: ${totalDelivered} (from emails) + ${autoDelivered} (auto-detected)`);
+
+  return {
+    scanned: totalScanned,
+    found: totalFound,
+    delivered: totalDelivered + autoDelivered,
+    accounts: GMAIL_ACCOUNTS.length
+  };
 }
 
 if (require.main === module) {
@@ -283,4 +403,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { scanGmailFast };
+module.exports = { scanGmailFast, updateDeliveryStatuses, GMAIL_ACCOUNTS };

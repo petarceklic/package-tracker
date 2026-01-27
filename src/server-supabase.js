@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { queries } = require('./db-supabase');
-const { scanGmailFast } = require('./scanner-optimized');
+const { scanGmailFast, updateDeliveryStatuses, GMAIL_ACCOUNTS } = require('./scanner-supabase');
 require('dotenv').config();
 
 const app = express();
@@ -116,6 +116,33 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
+// Get accounts being scanned
+app.get('/api/accounts', (req, res) => {
+  res.json({ success: true, accounts: GMAIL_ACCOUNTS });
+});
+
+// Mark package as delivered (manual override)
+app.post('/api/packages/:trackingNumber/delivered', async (req, res) => {
+  try {
+    const result = await queries.updatePackageStatus('Delivered', req.params.trackingNumber);
+    res.json({ success: true, package: result });
+  } catch (error) {
+    console.error('Error marking package as delivered:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Update delivery statuses (check past dates)
+app.post('/api/check-deliveries', async (req, res) => {
+  try {
+    const updated = await updateDeliveryStatuses();
+    res.json({ success: true, updated });
+  } catch (error) {
+    console.error('Error checking deliveries:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Health check endpoint for Railway
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -128,7 +155,7 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n📦 Package Tracker running on port ${PORT}`);
-  console.log(`📧 Monitoring: ${process.env.GOG_ACCOUNT}`);
+  console.log(`📧 Monitoring: ${GMAIL_ACCOUNTS.join(', ')}`);
   console.log(`🔗 Supabase: ${process.env.SUPABASE_URL}`);
   console.log(`\n✅ Server ready!\n`);
 });

@@ -30,11 +30,21 @@ const CARRIERS = {
     trackingUrl: 'https://www.toll.com.au/track-n-trace?id='
   },
   'Aramex': {
-    domains: ['aramex.com'],
+    domains: ['aramex.com', 'shippit.com'],
     patterns: [
+      /Tracking\s*number:\s*([A-Z]{2}\d+)/i,
+      /(?:waybill|awb|tracking).*?([A-Z]{2}\d{10,})/i,
       /(?:waybill|awb|tracking).*?(\d{11,})/i
     ],
     trackingUrl: 'https://www.aramex.com/au/track/results?mode=0&ShipmentNumber='
+  },
+  'Shippit': {
+    domains: ['shippit.com'],
+    patterns: [
+      /app\.shippit\.com\/tracking\/([a-z0-9]+)/i,
+      /Tracking\s*number:\s*([A-Z0-9]+)/i
+    ],
+    trackingUrl: 'https://app.shippit.com/tracking/'
   },
   'CouriersPlease': {
     domains: ['couriersplease.com.au'],
@@ -74,11 +84,13 @@ const CARRIERS = {
     trackingUrl: 'https://track.sendle.com/tracking?ref='
   },
   'Amazon': {
-    domains: ['amazon.com', 'amazon.com.au'],
+    domains: ['amazon.com', 'amazon.com.au', 'shipment-tracking@amazon'],
     patterns: [
-      /tracking\s*(?:id|number)[:\s]+([A-Z0-9]{10,})/i,
+      /Order\s*#\s*(\d{3}-\d{7}-\d{7})/i,
+      /orderIdP(\d-\d{7}-\d{7})/i,
       /TBA\d{12}/,
-      /1Z[A-Z0-9]{16}/
+      /1Z[A-Z0-9]{16}/,
+      /tracking\s*(?:id|number)[:\s]+([A-Z0-9]{10,})/i
     ],
     trackingUrl: 'https://www.amazon.com.au/progress-tracker/package/'
   },

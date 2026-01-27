@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Package Tracker 📦</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FullCalendar -->
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    
+    <!-- Custom styles -->
+    <style>
+        .fc-event {
+            cursor: pointer;
+            border-radius: 4px;
+            padding: 2px 4px;
+        }
+        .fc-daygrid-event {
+            white-space: normal;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-in-transit { background: #3b82f6; color: white; }
+        .status-out-for-delivery { background: #f59e0b; color: white; }
+        .status-delivered { background: #10b981; color: white; }
+        .status-delayed { background: #ef4444; color: white; }
+        .status-cancelled { background: #6b7280; color: white; }
+        
+        .carrier-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            background: #e5e7eb;
+            color: #374151;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">📦 Package Tracker</h1>
+                        <p class="text-sm text-gray-500" id="account-info">Loading...</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="scanNow()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition">
+                            🔄 Scan Inbox
+                        </button>
+                        <button onclick="toggleView()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium transition">
+                            <span id="view-toggle-text">📋 List View</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Bar -->
+        <div class="bg-white border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div class="grid grid-cols-3 gap-4" id="stats">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-gray-900" id="stat-total">0</div>
+                        <div class="text-sm text-gray-500">Total Packages</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-blue-600" id="stat-active">0</div>
+                        <div class="text-sm text-gray-500">In Transit</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-600" id="stat-delivered">0</div>
+                        <div class="text-sm text-gray-500">Delivered</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search & Filters -->
+        <div class="bg-white border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+                <div class="flex gap-3">
+                    <input 
+                        type="text" 
+                        id="search-input" 
+                        placeholder="Search tracking numbers, items..." 
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        onkeyup="handleSearch()"
+                    />
+                    <select 
+                        id="carrier-filter" 
+                        class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        onchange="handleFilter()"
+                    >
+                        <option value="">All Carriers</option>
+                    </select>
+                    <select 
+                        id="status-filter" 
+                        class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        onchange="handleFilter()"
+                    >
+                        <option value="">All Status</option>
+                        <option value="In Transit">In Transit</option>
+                        <option value="Out for Delivery">Out for Delivery</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Delayed">Delayed</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <!-- Calendar View -->
+            <div id="calendar-view" class="bg-white rounded-lg shadow-sm p-6">
+                <div id="calendar"></div>
+            </div>
+
+            <!-- List View -->
+            <div id="list-view" class="hidden">
+                <div id="packages-list" class="space-y-3">
+                    <!-- Packages will be inserted here -->
+                </div>
+                <div id="empty-state" class="hidden text-center py-12">
+                    <div class="text-6xl mb-4">📭</div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">No packages found</h3>
+                    <p class="text-gray-500">Try scanning your inbox or adjusting your filters</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 text-center">
+            <div class="text-4xl mb-3">📦</div>
+            <div class="text-lg font-semibold">Loading packages...</div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "package-tracker",
+  "version": "2.0.0",
+  "description": "Cloud-hosted automated package tracking dashboard from Gmail",
+  "main": "src/server-supabase.js",
+  "scripts": {
+    "start": "node src/server-supabase.js",
+    "scan": "node src/scanner-supabase.js",
+    "dev": "nodemon src/server-supabase.js"
+  },
+  "keywords": ["package", "tracking", "gmail", "delivery", "supabase", "cloud"],
+  "author": "Mia",
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.3",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=16.x"
+  }
+}

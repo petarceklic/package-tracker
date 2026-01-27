@@ -1,0 +1,56 @@
+{
+  "packages": [
+    {
+      "id": 1769479300001,
+      "tracking_number": "7X15849404587690000154",
+      "carrier": "Australia Post",
+      "status": "Out for Delivery",
+      "estimated_delivery": "2026-01-27",
+      "item_description": "Package from Rice Culture",
+      "email_subject": "Your package is out for delivery from Rice Culture",
+      "email_date": "2026-01-27 08:51",
+      "tracking_url": "https://auspost.com.au/mypost/track/#/details/7X15849404587690000154",
+      "created_at": "2026-01-27T00:51:00.000Z",
+      "updated_at": "2026-01-27T00:51:00.000Z"
+    },
+    {
+      "id": 1769479300002,
+      "tracking_number": "1Z999AA10123456784",
+      "carrier": "Amazon",
+      "status": "In Transit",
+      "estimated_delivery": "2026-01-29",
+      "item_description": "Amazon Order",
+      "email_subject": "Your Amazon.com order has shipped",
+      "email_date": "2026-01-25 14:20",
+      "tracking_url": "https://www.amazon.com.au/progress-tracker/package/ref=ppx_yo_dt_b_track_package?_encoding=UTF8&itemId=&orderId=&packageIndex=&shipmentId=1Z999AA10123456784",
+      "created_at": "2026-01-25T06:20:00.000Z",
+      "updated_at": "2026-01-25T06:20:00.000Z"
+    },
+    {
+      "id": 1769479300003,
+      "tracking_number": "LP00327654321AU",
+      "carrier": "AliExpress",
+      "status": "In Transit",
+      "estimated_delivery": "2026-02-05",
+      "item_description": "AliExpress Standard Shipping",
+      "email_subject": "Your AliExpress order has been shipped",
+      "email_date": "2026-01-20 09:15",
+      "tracking_url": "https://track.aliexpress.com/logisticsdetail.htm?tradeId=LP00327654321AU",
+      "created_at": "2026-01-20T01:15:00.000Z",
+      "updated_at": "2026-01-20T01:15:00.000Z"
+    },
+    {
+      "id": 1769479300004,
+      "tracking_number": "365550322352",
+      "carrier": "eBay",
+      "status": "In Transit",
+      "estimated_delivery": "2026-02-10",
+      "item_description": "Water Vapor Fireplace",
+      "email_subject": "petar_c sent a message about 【360 Colors】Water Vapor Fireplace",
+      "email_date": "2026-01-27 08:46",
+      "tracking_url": "https://www.ebay.com.au/sh/track?tn=365550322352",
+      "created_at": "2026-01-27T00:46:00.000Z",
+      "updated_at": "2026-01-27T00:46:00.000Z"
+    }
+  ]
+}

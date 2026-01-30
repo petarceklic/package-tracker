@@ -324,8 +324,10 @@ async function scanGmailAccount(account) {
           deliveredCount++;
         } else if (checkIfOutForDelivery(body || thread.snippet || '', subject)) {
           status = 'Out for Delivery';
-          // "Out for delivery" / "Arriving today" always means today
-          estimatedDelivery = new Date().toISOString().split('T')[0];
+          // Only set today's date if no explicit date was found in the email
+          if (!estimatedDelivery) {
+            estimatedDelivery = new Date().toISOString().split('T')[0];
+          }
         }
 
         try {

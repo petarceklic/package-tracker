@@ -78,6 +78,14 @@ const queries = {
       if (newRank < existingRank) {
         packageData.status = existing.status;
       }
+      // Never overwrite estimated_delivery with an earlier date
+      if (existing.estimated_delivery && estimatedDelivery) {
+        const existingDate = new Date(existing.estimated_delivery);
+        const newDate = new Date(estimatedDelivery);
+        if (newDate < existingDate) {
+          packageData.estimated_delivery = existing.estimated_delivery;
+        }
+      }
 
       // Update existing package
       const { data, error } = await supabase

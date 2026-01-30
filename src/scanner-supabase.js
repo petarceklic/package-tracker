@@ -316,6 +316,7 @@ async function scanGmailAccount(account) {
         // Determine status from email content
         let status = 'In Transit';
         let deliveredAt = null;
+        let estimatedDelivery = info.estimatedDelivery;
 
         if (info.isDelivered) {
           status = 'Delivered';
@@ -323,6 +324,8 @@ async function scanGmailAccount(account) {
           deliveredCount++;
         } else if (checkIfOutForDelivery(body || thread.snippet || '', subject)) {
           status = 'Out for Delivery';
+          // "Out for delivery" / "Arriving today" always means today
+          estimatedDelivery = new Date().toISOString().split('T')[0];
         }
 
         try {
@@ -330,7 +333,7 @@ async function scanGmailAccount(account) {
             info.trackingNumber,
             info.carrier,
             status,
-            info.estimatedDelivery,
+            estimatedDelivery,
             itemDesc,
             subject,
             date,
@@ -340,7 +343,7 @@ async function scanGmailAccount(account) {
           );
 
           packagesFound++;
-          console.log(`✅ ${info.carrier}: ${info.trackingNumber} [${status}] ${info.estimatedDelivery ? `(${info.estimatedDelivery})` : ''} from ${account}`);
+          console.log(`✅ ${info.carrier}: ${info.trackingNumber} [${status}] ${estimatedDelivery ? `(${estimatedDelivery})` : ''} from ${account}`);
         } catch (dbError) {
           console.error('DB error:', dbError.message);
         }

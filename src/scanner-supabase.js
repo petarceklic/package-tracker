@@ -164,6 +164,24 @@ function checkIfDelivered(emailBody, emailSubject) {
   return false;
 }
 
+const OUT_FOR_DELIVERY_PHRASES = [
+  'out for delivery',
+  'out for  ',   // Amazon sometimes truncates
+  'on its way to you',
+  'arriving today',
+  'will be delivered today',
+];
+
+function checkIfOutForDelivery(emailBody, emailSubject) {
+  const combinedText = (emailSubject + ' ' + emailBody).toLowerCase();
+  for (const phrase of OUT_FOR_DELIVERY_PHRASES) {
+    if (combinedText.includes(phrase)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function isDeliveryDatePassed(estimatedDelivery) {
   if (!estimatedDelivery) return false;
   const today = new Date();
@@ -295,7 +313,7 @@ async function scanGmailAccount(account) {
           itemDesc = `Package from ${info.carrier}`;
         }
 
-        // Determine status - only mark as Delivered if email explicitly says so
+        // Determine status from email content
         let status = 'In Transit';
         let deliveredAt = null;
 
@@ -303,9 +321,9 @@ async function scanGmailAccount(account) {
           status = 'Delivered';
           deliveredAt = new Date().toISOString();
           deliveredCount++;
+        } else if (checkIfOutForDelivery(body || thread.snippet || '', subject)) {
+          status = 'Out for Delivery';
         }
-        // Don't auto-mark as delivered just because the date passed
-        // The estimated delivery date is often inaccurate
 
         try {
           await queries.insertPackage(

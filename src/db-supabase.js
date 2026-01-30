@@ -71,9 +71,12 @@ const queries = {
       if (canUseNewColumns && existing.delivered_at) {
         delete packageData.delivered_at;
       }
-      // Never downgrade from Delivered back to In Transit
-      if (existing.status === 'Delivered' && status !== 'Delivered') {
-        packageData.status = 'Delivered';
+      // Never downgrade status: Delivered > Out for Delivery > In Transit
+      const STATUS_RANK = { 'Delivered': 3, 'Out for Delivery': 2, 'In Transit': 1, 'Delayed': 1, 'Cancelled': 0 };
+      const existingRank = STATUS_RANK[existing.status] || 0;
+      const newRank = STATUS_RANK[status] || 0;
+      if (newRank < existingRank) {
+        packageData.status = existing.status;
       }
 
       // Update existing package

@@ -364,10 +364,36 @@ async function scanGmailAccount(account) {
 }
 
 async function updateDeliveryStatuses() {
-  // No-op: we no longer auto-mark packages as delivered based on date alone.
-  // Only explicit email confirmation or manual action marks a package as delivered.
-  console.log('🔄 Delivery status check skipped (only email-confirmed deliveries are marked)');
-  return 0;
+  console.log('🔄 Checking for past-due packages to auto-mark as delivered...');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  try {
+    const packages = await queries.getAllPackages();
+    let autoDelivered = 0;
+
+    for (const pkg of packages) {
+      if (pkg.status === 'Delivered' || pkg.status === 'Cancelled') continue;
+      if (!pkg.estimated_delivery) continue;
+
+      const deliveryDate = new Date(pkg.estimated_delivery);
+      deliveryDate.setHours(0, 0, 0, 0);
+
+      // If estimated delivery is in the past and package is Out for Delivery,
+      // it was almost certainly delivered — mark it as such
+      if (deliveryDate < today && pkg.status === 'Out for Delivery') {
+        await queries.updatePackageStatus('Delivered', pkg.tracking_number);
+        console.log(`📬 Auto-delivered: ${pkg.tracking_number} (was Out for Delivery, due ${pkg.estimated_delivery})`);
+        autoDelivered++;
+      }
+    }
+
+    console.log(`📬 Auto-marked ${autoDelivered} past-due packages as delivered`);
+    return autoDelivered;
+  } catch (error) {
+    console.error('Error updating delivery statuses:', error.message);
+    return 0;
+  }
 }
 
 async function scanGmailFast() {

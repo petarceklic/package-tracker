@@ -71,6 +71,10 @@ const queries = {
       if (canUseNewColumns && existing.delivered_at) {
         delete packageData.delivered_at;
       }
+      // Never downgrade from Delivered back to In Transit
+      if (existing.status === 'Delivered' && status !== 'Delivered') {
+        packageData.status = 'Delivered';
+      }
 
       // Update existing package
       const { data, error } = await supabase

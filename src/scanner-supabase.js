@@ -8,19 +8,21 @@ const GMAIL_ACCOUNTS = [
   'eceklic@gmail.com'
 ];
 
-// Keywords that indicate a package was delivered
-const DELIVERY_KEYWORDS = [
-  'delivered',
+// Keywords that indicate a package was ALREADY delivered (strict matching)
+// Must avoid false positives like "out for delivery", "delivery estimate", etc.
+const DELIVERY_PHRASES = [
   'has been delivered',
   'was delivered',
   'successfully delivered',
   'package delivered',
   'your package has arrived',
   'delivery complete',
-  'left at',
-  'signed for',
-  'delivered to',
-  'parcel delivered'
+  'parcel delivered',
+  'order delivered',
+  'your order has been delivered',
+  'your parcel has been delivered',
+  'item delivered',
+  'signed for by',
 ];
 
 // Same CARRIERS config as before
@@ -154,8 +156,8 @@ function parseDate(dateStr) {
 
 function checkIfDelivered(emailBody, emailSubject) {
   const combinedText = (emailSubject + ' ' + emailBody).toLowerCase();
-  for (const keyword of DELIVERY_KEYWORDS) {
-    if (combinedText.includes(keyword.toLowerCase())) {
+  for (const phrase of DELIVERY_PHRASES) {
+    if (combinedText.includes(phrase.toLowerCase())) {
       return true;
     }
   }
@@ -229,7 +231,7 @@ async function scanGmailAccount(account) {
   let result;
   try {
     result = execSync(
-      `gog gmail search '${searchQuery}' --max 50 --json --account ${account}`,
+      `/opt/homebrew/bin/gog gmail search '${searchQuery}' --max 50 --json --account ${account}`,
       { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 }
     );
   } catch (error) {
@@ -267,7 +269,7 @@ async function scanGmailAccount(account) {
           // This looks promising, fetch full body
           try {
             body = execSync(
-              `gog gmail get ${thread.id} --format full --account ${account}`,
+              `/opt/homebrew/bin/gog gmail get ${thread.id} --format full --account ${account}`,
               { encoding: 'utf-8', maxBuffer: 5 * 1024 * 1024, timeout: 10000 }
             );
           } catch (e) {
@@ -293,7 +295,7 @@ async function scanGmailAccount(account) {
           itemDesc = `Package from ${info.carrier}`;
         }
 
-        // Determine status
+        // Determine status - only mark as Delivered if email explicitly says so
         let status = 'In Transit';
         let deliveredAt = null;
 
@@ -301,12 +303,9 @@ async function scanGmailAccount(account) {
           status = 'Delivered';
           deliveredAt = new Date().toISOString();
           deliveredCount++;
-        } else if (isDeliveryDatePassed(info.estimatedDelivery)) {
-          // If delivery date is in the past, likely delivered
-          status = 'Delivered';
-          deliveredAt = new Date(info.estimatedDelivery).toISOString();
-          deliveredCount++;
         }
+        // Don't auto-mark as delivered just because the date passed
+        // The estimated delivery date is often inaccurate
 
         try {
           await queries.insertPackage(
@@ -338,31 +337,10 @@ async function scanGmailAccount(account) {
 }
 
 async function updateDeliveryStatuses() {
-  console.log('\n🔄 Checking for packages to mark as delivered...');
-
-  try {
-    const packages = await queries.getAllPackages();
-    let updatedCount = 0;
-
-    for (const pkg of packages) {
-      if (pkg.status === 'Delivered' || pkg.status === 'Cancelled') {
-        continue;
-      }
-
-      // Check if delivery date has passed
-      if (isDeliveryDatePassed(pkg.estimated_delivery)) {
-        await queries.updatePackageStatus('Delivered', pkg.tracking_number);
-        console.log(`📦 Auto-marked as delivered: ${pkg.tracking_number} (past delivery date)`);
-        updatedCount++;
-      }
-    }
-
-    console.log(`✅ Updated ${updatedCount} packages to delivered status`);
-    return updatedCount;
-  } catch (error) {
-    console.error('Error updating delivery statuses:', error);
-    return 0;
-  }
+  // No-op: we no longer auto-mark packages as delivered based on date alone.
+  // Only explicit email confirmation or manual action marks a package as delivered.
+  console.log('🔄 Delivery status check skipped (only email-confirmed deliveries are marked)');
+  return 0;
 }
 
 async function scanGmailFast() {

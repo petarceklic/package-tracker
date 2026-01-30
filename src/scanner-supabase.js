@@ -314,19 +314,23 @@ async function scanGmailAccount(account) {
         }
 
         // Determine status from email content
+        // Use the email's sent date, not today's date
+        const emailDate = date ? new Date(date) : new Date();
+        const emailDateStr = emailDate.toISOString().split('T')[0];
+
         let status = 'In Transit';
         let deliveredAt = null;
         let estimatedDelivery = info.estimatedDelivery;
 
         if (info.isDelivered) {
           status = 'Delivered';
-          deliveredAt = new Date().toISOString();
+          deliveredAt = emailDate.toISOString();
           deliveredCount++;
         } else if (checkIfOutForDelivery(body || thread.snippet || '', subject)) {
           status = 'Out for Delivery';
-          // Only set today's date if no explicit date was found in the email
+          // "Arriving today" means the day the email was sent, not today
           if (!estimatedDelivery) {
-            estimatedDelivery = new Date().toISOString().split('T')[0];
+            estimatedDelivery = emailDateStr;
           }
         }
 

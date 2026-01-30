@@ -144,14 +144,18 @@ function parseDate(dateStr) {
   try {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return null;
-    return date.toISOString().split('T')[0];
+    return toDateStr(date);
   } catch (e) {
     return null;
   }
 }
 
+// Use local timezone (not UTC) to avoid date shifts for Australian times
 function toDateStr(d) {
-  return d.toISOString().split('T')[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 // Resolve a day name ("Friday") to a date relative to the email sent date.

@@ -76,13 +76,10 @@ const queries = {
       const existingRank = STATUS_RANK[existing.status] || 0;
       const newRank = STATUS_RANK[status] || 0;
       if (newRank < existingRank) {
+        // Keep the higher-ranked status AND its date — the more recent
+        // status update had the more authoritative delivery date
         packageData.status = existing.status;
-      }
-      // Never overwrite estimated_delivery with an earlier date
-      if (existing.estimated_delivery && estimatedDelivery) {
-        const existingDate = new Date(existing.estimated_delivery);
-        const newDate = new Date(estimatedDelivery);
-        if (newDate < existingDate) {
+        if (existing.estimated_delivery) {
           packageData.estimated_delivery = existing.estimated_delivery;
         }
       }

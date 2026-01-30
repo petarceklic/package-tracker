@@ -136,12 +136,8 @@ const CARRIERS = {
   }
 };
 
-const DATE_PATTERNS = [
-  /(?:estimated\s+)?delivery.*?(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i,
-  /(?:expected|arrives?).*?(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i,
-  /(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4})/i,
-  /(?:by|before).*?(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*)/i
-];
+const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const MONTH_NAMES = 'Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec';
 
 function parseDate(dateStr) {
   if (!dateStr) return null;
@@ -152,6 +148,104 @@ function parseDate(dateStr) {
   } catch (e) {
     return null;
   }
+}
+
+function toDateStr(d) {
+  return d.toISOString().split('T')[0];
+}
+
+// Resolve a day name ("Friday") to a date relative to the email sent date.
+// Looks forward up to 7 days from emailDate.
+function resolveDayName(dayName, emailDate) {
+  const targetDay = DAY_NAMES.indexOf(dayName.toLowerCase());
+  if (targetDay === -1) return null;
+  const d = new Date(emailDate);
+  for (let i = 0; i <= 7; i++) {
+    const check = new Date(d);
+    check.setDate(d.getDate() + i);
+    if (check.getDay() === targetDay) {
+      return toDateStr(check);
+    }
+  }
+  return null;
+}
+
+// Extract a delivery date from the email body, using the email's sent date
+// to resolve relative references like "today", "Friday", etc.
+function extractDeliveryDate(combinedText, emailDate) {
+  // --- Priority 1: "Arriving today" / "Delivered today" ---
+  if (/arriving\s+today/i.test(combinedText) || /delivered\s+today/i.test(combinedText)) {
+    return toDateStr(emailDate);
+  }
+
+  // --- Priority 2: "Arriving [DayName]" e.g. "Arriving Friday" ---
+  const dayMatch = combinedText.match(/arriving\s+(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i);
+  if (dayMatch) {
+    const resolved = resolveDayName(dayMatch[1], emailDate);
+    if (resolved) return resolved;
+  }
+
+  // --- Priority 3: "Arriving [Month Day]" e.g. "Arriving Jan 30", "Arriving January 30" ---
+  const arrMonthDay = combinedText.match(new RegExp(
+    `arriving\\s+(?:\\w+,\\s*)?(${MONTH_NAMES})\\w*\\s+(\\d{1,2})`, 'i'
+  ));
+  if (arrMonthDay) {
+    const parsed = parseDate(`${arrMonthDay[1]} ${arrMonthDay[2]}, ${emailDate.getFullYear()}`);
+    if (parsed) return parsed;
+  }
+
+  // --- Priority 4: "Arriving [Day Month]" e.g. "Arriving 30 January" ---
+  const arrDayMonth = combinedText.match(new RegExp(
+    `arriving\\s+(?:\\w+,\\s*)?(\\d{1,2})\\s+(${MONTH_NAMES})\\w*`, 'i'
+  ));
+  if (arrDayMonth) {
+    const parsed = parseDate(`${arrDayMonth[2]} ${arrDayMonth[1]}, ${emailDate.getFullYear()}`);
+    if (parsed) return parsed;
+  }
+
+  // --- Priority 5: "delivery by/expected/estimated [Month Day]" ---
+  const deliveryMonthDay = combinedText.match(new RegExp(
+    `(?:estimated\\s+)?(?:delivery|expected|arrives?)\\s+(?:by\\s+)?(?:\\w+,\\s*)?(${MONTH_NAMES})\\w*\\s+(\\d{1,2})`, 'i'
+  ));
+  if (deliveryMonthDay) {
+    const parsed = parseDate(`${deliveryMonthDay[1]} ${deliveryMonthDay[2]}, ${emailDate.getFullYear()}`);
+    if (parsed) return parsed;
+  }
+
+  // --- Priority 6: "delivery by/expected [Day Month]" ---
+  const deliveryDayMonth = combinedText.match(new RegExp(
+    `(?:estimated\\s+)?(?:delivery|expected|arrives?)\\s+(?:by\\s+)?(?:\\w+,\\s*)?(\\d{1,2})\\s+(${MONTH_NAMES})\\w*`, 'i'
+  ));
+  if (deliveryDayMonth) {
+    const parsed = parseDate(`${deliveryDayMonth[2]} ${deliveryDayMonth[1]}, ${emailDate.getFullYear()}`);
+    if (parsed) return parsed;
+  }
+
+  // --- Priority 7: Explicit numeric dates near delivery keywords ---
+  const numericDate = combinedText.match(/(?:estimated\s+)?(?:delivery|expected|arrives?)\s+(?:by\s+)?.*?(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i);
+  if (numericDate) {
+    const parsed = parseDate(numericDate[1]);
+    if (parsed) return parsed;
+  }
+
+  // --- Priority 8: "by/before [Day Month]" ---
+  const byDate = combinedText.match(new RegExp(
+    `(?:by|before)\\s+(?:\\w+,\\s*)?(${MONTH_NAMES})\\w*\\s+(\\d{1,2})`, 'i'
+  ));
+  if (byDate) {
+    const parsed = parseDate(`${byDate[1]} ${byDate[2]}, ${emailDate.getFullYear()}`);
+    if (parsed) return parsed;
+  }
+
+  const byDateRev = combinedText.match(new RegExp(
+    `(?:by|before)\\s+(?:\\w+,\\s*)?(\\d{1,2})\\s+(${MONTH_NAMES})\\w*`, 'i'
+  ));
+  if (byDateRev) {
+    const parsed = parseDate(`${byDateRev[2]} ${byDateRev[1]}, ${emailDate.getFullYear()}`);
+    if (parsed) return parsed;
+  }
+
+  return null;
 }
 
 function checkIfDelivered(emailBody, emailSubject) {
@@ -190,7 +284,7 @@ function isDeliveryDatePassed(estimatedDelivery) {
   return deliveryDate < today;
 }
 
-function extractTrackingInfo(emailBody, emailSubject, fromEmail) {
+function extractTrackingInfo(emailBody, emailSubject, fromEmail, emailSentDate) {
   let detectedCarrier = null;
   let trackingNumber = null;
   let estimatedDelivery = null;
@@ -216,13 +310,8 @@ function extractTrackingInfo(emailBody, emailSubject, fromEmail) {
         }
       }
 
-      for (const datePattern of DATE_PATTERNS) {
-        const match = combinedText.match(datePattern);
-        if (match) {
-          estimatedDelivery = parseDate(match[1]);
-          break;
-        }
-      }
+      // Extract delivery date from email content, using sent date for relative references
+      estimatedDelivery = extractDeliveryDate(combinedText, emailSentDate);
 
       if (trackingNumber) break;
     }
@@ -297,7 +386,11 @@ async function scanGmailAccount(account) {
         }
       }
 
-      const info = extractTrackingInfo(body || thread.snippet || '', subject, from);
+      // Parse email sent date once, used for date extraction and status
+      const emailDate = date ? new Date(date) : new Date();
+      const emailDateStr = emailDate.toISOString().split('T')[0];
+
+      const info = extractTrackingInfo(body || thread.snippet || '', subject, from, emailDate);
 
       if (info.carrier && info.trackingNumber) {
         let itemDesc = subject
@@ -314,9 +407,6 @@ async function scanGmailAccount(account) {
         }
 
         // Determine status from email content
-        // Use the email's sent date, not today's date
-        const emailDate = date ? new Date(date) : new Date();
-        const emailDateStr = emailDate.toISOString().split('T')[0];
 
         let status = 'In Transit';
         let deliveredAt = null;
